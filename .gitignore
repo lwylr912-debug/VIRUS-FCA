@@ -1,0 +1,7 @@
+node_modules/
+appstate.json
+account.json
+account.txt
+.nexca/
+*.bak
+.env
