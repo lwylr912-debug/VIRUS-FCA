@@ -5,7 +5,7 @@
   "description": "Messenger bot with private messages, groups and E2EE support",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node watchdog.js" 
   },
   "engines": {
     "node": ">=18"
