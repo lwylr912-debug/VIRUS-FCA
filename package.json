@@ -2,10 +2,10 @@
   "name": "virus-fca-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Messenger bot with private messages, groups and E2EE support",
+  "description": "VIRUS-FCA Messenger Bot with E2EE",
   "main": "index.js",
   "scripts": {
-    "start": "node watchdog.js" 
+    "start": "node watchdog.js"
   },
   "engines": {
     "node": ">=18"
