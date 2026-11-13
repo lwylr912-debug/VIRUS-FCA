@@ -6,6 +6,7 @@ const login = require("fca-riyad");
 
 const APPSTATE_FILE = path.join(__dirname, "appstate.json");
 const SETTINGS_FILE = path.join(__dirname, "settings.json");
+const COMMANDS_DIR = path.join(__dirname, "commands");
 
 const OWNER_ID = process.env.OWNER_ID || "";
 const PREFIX = "!";
@@ -17,7 +18,9 @@ const DEFAULT_SETTINGS = {
 };
 
 let settings = { ...DEFAULT_SETTINGS };
+const commands = new Map();
 
+// تحميل الإعدادات
 function loadSettings() {
     try {
         if (fs.existsSync(SETTINGS_FILE)) {
@@ -29,7 +32,7 @@ function loadSettings() {
             saveSettings();
         }
     } catch (error) {
-        console.error("خطأ في إعدادات البوت:", error.message);
+        console.error("Settings Error:", error.message);
     }
 }
 
@@ -40,10 +43,37 @@ function saveSettings() {
     );
 }
 
+// تحميل الأوامر
+function loadCommands() {
+    if (!fs.existsSync(COMMANDS_DIR)) {
+        fs.mkdirSync(COMMANDS_DIR, { recursive: true });
+    }
+
+    const files = fs.readdirSync(COMMANDS_DIR)
+        .filter(file => file.endsWith(".js"));
+
+    for (const file of files) {
+        try {
+            const command = require(path.join(COMMANDS_DIR, file));
+
+            if (!command.name || typeof command.run !== "function") {
+                console.log(`⚠️ أمر غير صالح: ${file}`);
+                continue;
+            }
+
+            commands.set(command.name.toLowerCase(), command);
+            console.log(`✅ تم تحميل الأمر: ${command.name}`);
+        } catch (error) {
+            console.error(`❌ خطأ في ${file}:`, error.message);
+        }
+    }
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// التحقق من ملف الجلسة
 if (!fs.existsSync(APPSTATE_FILE)) {
     console.error("❌ ملف appstate.json غير موجود!");
     process.exit(1);
@@ -61,6 +91,7 @@ try {
 }
 
 loadSettings();
+loadCommands();
 
 console.log("⏳ جاري تشغيل VIRUS-FCA...");
 
@@ -73,14 +104,18 @@ login(
             return;
         }
 
-        console.log("✅ تم تسجيل الدخول بنجاح!");
+        console.log("✅ تم تسجيل الدخول!");
 
         try {
-            api.sessionGuard(APPSTATE_FILE);
+            api.sessionGuard(APPSTATE_FILE, {
+                interval: 3 * 60 * 1000,
+                debounce: 30 * 1000
+            });
+
             await api.connectE2EE();
             console.log("🔐 تمت تهيئة E2EE");
         } catch (error) {
-            console.error("⚠️ تعذر تهيئة E2EE:", error.message);
+            console.error("⚠️ خطأ E2EE:", error.message);
         }
 
         api.listenE2EE(async (error, event) => {
@@ -105,7 +140,33 @@ login(
                 }
             }
 
-            // أوامر المالك
+            // تشغيل أوامر البوت
+            if (message.startsWith(PREFIX)) {
+                const input = message.slice(PREFIX.length).trim();
+                const parts = input.split(/\s+/);
+                const commandName = (parts.shift() || "").toLowerCase();
+                const args = parts;
+
+                const command = commands.get(commandName);
+
+                if (command) {
+                    try {
+                        await command.run({
+                            api,
+                            event,
+                            args,
+                            send
+                        });
+                    } catch (error) {
+                        console.error("Command Error:", error);
+                        await send("❌ حدث خطأ أثناء تنفيذ الأمر.");
+                    }
+
+                    return;
+                }
+            }
+
+            // أوامر DAMON للمالك فقط
             if (message.toLowerCase().startsWith("!damon")) {
                 if (!OWNER_ID || senderID !== OWNER_ID) return;
 
@@ -142,7 +203,7 @@ login(
                     const seconds = Number(parts[1]);
 
                     if (!Number.isInteger(seconds) || seconds < 0 || seconds > 3600) {
-                        return send("❌ حدد وقتاً بالثواني من 0 إلى 3600.");
+                        return send("❌ حدد وقتاً من 0 إلى 3600 ثانية.");
                     }
 
                     settings.delay = seconds;
@@ -175,7 +236,6 @@ login(
             if (settings.enabled) {
                 await sleep(settings.delay * 1000);
 
-                // التأكد من أن الرد التلقائي لم يتوقف أثناء الانتظار
                 if (!settings.enabled) return;
 
                 await send(settings.message);
