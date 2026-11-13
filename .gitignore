@@ -5,3 +5,4 @@ account.txt
 .nexca/
 *.bak
 .env
+accounts/account*.json
