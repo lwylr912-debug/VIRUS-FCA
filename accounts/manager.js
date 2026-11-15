@@ -6,54 +6,69 @@ const path = require("path");
 const ACCOUNTS_DIR = __dirname;
 const MAX_ACCOUNTS = 5;
 
+function readAccount(id) {
+const file = path.join(ACCOUNTS_DIR, "account${id}.json");
+
+if (!fs.existsSync(file)) return null;
+
+try {
+    const content = fs.readFileSync(file, "utf8").trim();
+
+    if (!content) return null;
+
+    const appState = JSON.parse(content);
+
+    if (!Array.isArray(appState) || appState.length === 0) {
+        return null;
+    }
+
+    return appState;
+} catch {
+    return null;
+}
+
+}
+
 function getAccounts() {
-    const files = fs.readdirSync(ACCOUNTS_DIR)
-        .filter(file => /^account[1-5]\.json$/i.test(file));
+const accounts = [];
 
-    return files.map(file => {
-        const number = Number(file.match(/\d+/)[0]);
+for (let id = 1; id <= MAX_ACCOUNTS; id++) {
+    if (readAccount(id)) {
+        accounts.push({
+            id,
+            name: `الحساب ${id}`,
+            file: path.join(ACCOUNTS_DIR, `account${id}.json`)
+        });
+    }
+}
 
-        return {
-            id: number,
-            name: `الحساب ${number}`,
-            file: path.join(ACCOUNTS_DIR, file)
-        };
-    }).sort((a, b) => a.id - b.id);
+return accounts;
+
 }
 
 function getAccount(id) {
-    const number = Number(id);
+const number = Number(id);
 
-    if (!Number.isInteger(number) || number < 1 || number > MAX_ACCOUNTS) {
-        throw new Error("رقم الحساب يجب أن يكون من 1 إلى 5.");
-    }
+if (!Number.isInteger(number) || number < 1 || number > MAX_ACCOUNTS) {
+    throw new Error("رقم الحساب يجب أن يكون من 1 إلى 5.");
+}
 
-    const file = path.join(
-        ACCOUNTS_DIR,
-        `account${number}.json`
-    );
+const appState = readAccount(number);
 
-    if (!fs.existsSync(file)) {
-        throw new Error(`ملف الحساب ${number} غير موجود.`);
-    }
+if (!appState) {
+    throw new Error(`الحساب ${number} غير موجود أو ملف جلسته غير صالح.`);
+}
 
-    const appState = JSON.parse(
-        fs.readFileSync(file, "utf8")
-    );
+return {
+    id: number,
+    name: `الحساب ${number}`,
+    appState
+};
 
-    if (!Array.isArray(appState) || appState.length === 0) {
-        throw new Error(`ملف الحساب ${number} غير صالح.`);
-    }
-
-    return {
-        id: number,
-        name: `الحساب ${number}`,
-        appState
-    };
 }
 
 module.exports = {
-    MAX_ACCOUNTS,
-    getAccounts,
-    getAccount
+MAX_ACCOUNTS,
+getAccounts,
+getAccount
 };
