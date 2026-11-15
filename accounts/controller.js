@@ -4,26 +4,31 @@ const { getApi } = require("./runtime");
 const { getSelectedAccount } = require("./selection");
 const { getStatus } = require("./status");
 
-function getSelectedApi(userID) {
-    const accountID = getSelectedAccount(userID);
-    const status = getStatus(accountID);
+function getSelectedApi(userID, ownerID) {
+if (!ownerID || String(userID) !== String(ownerID)) {
+throw new Error("ليس لديك صلاحية التحكم بالحسابات.");
+}
 
-    if (status.status !== "متصل") {
-        throw new Error(`الحساب ${accountID} غير متصل.`);
-    }
+const accountID = getSelectedAccount(userID);
+const status = getStatus(accountID);
 
-    const api = getApi(accountID);
+if (status.status !== "متصل") {
+    throw new Error(`الحساب ${accountID} غير متصل.`);
+}
 
-    if (!api) {
-        throw new Error(`اتصال الحساب ${accountID} غير متاح.`);
-    }
+const api = getApi(accountID);
 
-    return {
-        accountID,
-        api
-    };
+if (!api) {
+    throw new Error(`اتصال الحساب ${accountID} غير متاح.`);
+}
+
+return {
+    accountID,
+    api
+};
+
 }
 
 module.exports = {
-    getSelectedApi
+getSelectedApi
 };
