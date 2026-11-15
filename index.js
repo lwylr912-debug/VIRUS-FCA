@@ -6,7 +6,7 @@ const path = require("path");
 const { startAll, getApi } = require("./accounts/runtime");
 const { getAccounts } = require("./accounts/manager");
 const { getAllStatus } = require("./accounts/status");
-const { selectAccount, getSelectedAccount } = require("./accounts/selection");
+const { selectAccount } = require("./accounts/selection");
 const { getSelectedApi } = require("./accounts/controller");
 const { createListener } = require("./accounts/listener");
 
@@ -217,16 +217,15 @@ async function handleDamon(api, event, message) {
     }
 
     const accountID = selected.accountID;
-    const selectedApi = selected.api;
-
     const settings = loadSettings(accountID);
 
     const args = message.slice(6).trim();
     const parts = args.split(/\s+/);
     const action = (parts[0] || "").toLowerCase();
 
+    // الرد عبر الحساب الذي استقبل رسالة المالك
     async function reply(text) {
-        return sendMessage(selectedApi, event, text);
+        return sendMessage(api, event, text);
     }
 
     if (action === "تشغيل" || action === "on") {
@@ -347,6 +346,7 @@ async function handleMessage({
 
         if (command) {
             let commandApi = api;
+            let commandAccountID = accountID;
 
             // أوامر المالك في الخاص تستخدم الحساب المختار
             if (owner && privateChat) {
@@ -357,6 +357,7 @@ async function handleMessage({
                     );
 
                     commandApi = selected.api;
+                    commandAccountID = selected.accountID;
 
                 } catch (error) {
                     return sendMessage(
@@ -367,8 +368,9 @@ async function handleMessage({
                 }
             }
 
+            // الرد دائماً عبر الحساب الذي استقبل الرسالة
             const send = async text => {
-                return sendMessage(commandApi, event, text);
+                return sendMessage(api, event, text);
             };
 
             try {
@@ -377,7 +379,7 @@ async function handleMessage({
                     event,
                     args,
                     send,
-                    accountID
+                    accountID: commandAccountID
                 });
 
             } catch (error) {
