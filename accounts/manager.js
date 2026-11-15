@@ -27,7 +27,10 @@ try {
 
     return appState;
 } catch (error) {
-    console.error(`❌ خطأ في قراءة الحساب ${id}:`, error.message);
+    console.error(
+        `❌ خطأ في قراءة الحساب ${id}:`,
+        error.message
+    );
     return null;
 }
 
