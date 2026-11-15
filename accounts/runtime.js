@@ -1,11 +1,15 @@
 "use strict";
 
-const fs = require("fs");
 const path = require("path");
 const login = require("fca-riyad");
 
-const { MAX_ACCOUNTS } = require("./config");
-const { getAccount } = require("./manager");
+const {
+    MAX_ACCOUNTS,
+    LOGIN_OPTIONS,
+    SESSION_GUARD
+} = require("./config");
+
+const { getAccount, getAccounts } = require("./manager");
 const { setStatus } = require("./status");
 
 const activeAccounts = new Map();
@@ -27,72 +31,135 @@ function startAccount(id, onEvent) {
             `account${id}.json`
         );
 
-        login(
-            { appState: account.appState },
-            {
-                listenEvents: true,
-                autoReconnect: true
-            },
-            async (err, api) => {
-                if (err || !api) {
-                    setStatus(id, "فشل تسجيل الدخول");
-                    console.error(`❌ الحساب ${id}:`, err || "لا يوجد اتصال");
-                    return resolve(null);
-                }
+        let finished = false;
 
-                try {
-                    api.sessionGuard(sessionFile, {
-                        interval: 3 * 60 * 1000,
-                        debounce: 30 * 1000
-                    });
+        function finish(api) {
+            if (finished) return;
+            finished = true;
+            resolve(api);
+        }
 
-                    try {
-                        await api.connectE2EE();
-                    } catch (error) {
+        try {
+            login(
+                { appState: account.appState },
+                {
+                    ...LOGIN_OPTIONS,
+                    listenEvents: true,
+                    autoReconnect: true
+                },
+                async (err, api) => {
+                    if (err || !api) {
+                        setStatus(id, "فشل تسجيل الدخول");
+
                         console.error(
-                            `⚠️ E2EE للحساب ${id}:`,
-                            error.message
+                            `❌ الحساب ${id}:`,
+                            err || "لا يوجد اتصال"
                         );
+
+                        return finish(null);
                     }
 
-                    api.listenE2EE((error, event) => {
-                        if (error) {
-                            console.error(
-                                `❌ استقبال الحساب ${id}:`,
-                                error
+                    try {
+                        if (typeof api.sessionGuard === "function") {
+                            api.sessionGuard(sessionFile, {
+                                ...SESSION_GUARD
+                            });
+                        }
+
+                        if (typeof api.connectE2EE === "function") {
+                            try {
+                                await api.connectE2EE();
+                            } catch (error) {
+                                console.error(
+                                    `⚠️ E2EE للحساب ${id}:`,
+                                    error.message
+                                );
+                            }
+                        }
+
+                        if (typeof api.listenE2EE !== "function") {
+                            throw new Error(
+                                "المكتبة لا توفر listenE2EE."
                             );
-                            return;
                         }
 
-                        if (!event || event.type !== "message") {
-                            return;
-                        }
+                        api.listenE2EE((error, event) => {
+                            if (error) {
+                                console.error(
+                                    `❌ استقبال الحساب ${id}:`,
+                                    error
+                                );
+                                return;
+                            }
 
-                        onEvent(id, api, event);
-                    });
+                            if (!event || event.type !== "message") {
+                                return;
+                            }
 
-                    activeAccounts.set(id, api);
-                    setStatus(id, "متصل", api);
+                            Promise.resolve(
+                                onEvent(id, api, event)
+                            ).catch((eventError) => {
+                                console.error(
+                                    `❌ معالجة رسالة الحساب ${id}:`,
+                                    eventError
+                                );
+                            });
+                        });
 
-                    console.log(`🟢 الحساب ${id} متصل`);
-                    resolve(api);
+                        activeAccounts.set(id, api);
+                        setStatus(id, "متصل");
 
-                } catch (error) {
-                    setStatus(id, "خطأ في التهيئة");
-                    console.error(`❌ الحساب ${id}:`, error);
-                    resolve(null);
+                        console.log(`🟢 الحساب ${id} متصل`);
+
+                        finish(api);
+
+                    } catch (error) {
+                        setStatus(id, "خطأ في التهيئة");
+
+                        console.error(
+                            `❌ تهيئة الحساب ${id}:`,
+                            error
+                        );
+
+                        finish(null);
+                    }
                 }
-            }
-        );
+            );
+        } catch (error) {
+            setStatus(id, "فشل تسجيل الدخول");
+
+            console.error(
+                `❌ تشغيل الحساب ${id}:`,
+                error
+            );
+
+            finish(null);
+        }
     });
 }
 
 async function startAll(onEvent) {
+    if (typeof onEvent !== "function") {
+        throw new Error("يجب توفير دالة استقبال الرسائل.");
+    }
+
+    const accounts = getAccounts()
+        .filter(account => account.id <= MAX_ACCOUNTS);
+
+    if (accounts.length === 0) {
+        console.log("⚠️ لم يتم العثور على حسابات صالحة.");
+        return [];
+    }
+
     const results = [];
 
-    for (let id = 1; id <= MAX_ACCOUNTS; id++) {
-        const api = await startAccount(id, onEvent);
-        results.push({ id, connected: Boolean(api) });
+    for (const account of accounts) {
+        const api = await startAccount(account.id, onEvent);
+
+        results.push({
+            id: account.id,
+            connected: Boolean(api)
+        });
     }
 
     return results;
