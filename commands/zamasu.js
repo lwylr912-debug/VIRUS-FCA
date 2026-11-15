@@ -15,8 +15,7 @@ module.exports = {
             return send("❌ هذا الأمر يعمل في المجموعات فقط.");
         }
 
-        const threadID = event.threadID;
-
+        const key = `${accountID}:${event.threadID}`;
         if (global.zamasuTimers.has(threadID)) {
             return send("⚠️ زاماسو يعمل بالفعل في هذه المجموعة.");
         }
