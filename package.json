@@ -11,6 +11,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "fca-riyad": "37.2.5"
+    "fca-riyad": "37.2.7"
   }
 }
