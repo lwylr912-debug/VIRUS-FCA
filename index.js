@@ -11,7 +11,6 @@ const { selectAccount } = require("./accounts/selection");
 const { getSelectedApi } = require("./accounts/controller");
 const { createListener } = require("./accounts/listener");
 
-// VIP LISTEN SYSTEM
 const listenSystem = require("./accounts/listen-system");
 
 const COMMANDS_DIR = path.join(__dirname, "commands");
@@ -77,7 +76,7 @@ function isPrivileged(senderID) {
 }
 
 // ================================
-// فحص المحادثة الخاصة
+// فحص المحادثة
 // ================================
 
 function isPrivate(event) {
@@ -85,19 +84,15 @@ function isPrivate(event) {
         return false;
     }
 
-    if (event.isGroup === true) {
-        return false;
-    }
-
-    if (event.isGroup === false) {
-        return true;
-    }
+    // نعتمد على بيانات الحدث المتاحة دون تجاوز تصنيف المجموعة.
+    if (event.isGroup === true) return false;
+    if (event.isGroup === false) return true;
 
     return String(event.threadID) === String(event.senderID);
 }
 
 // ================================
-// إعدادات مستقلة لكل حساب
+// إعدادات الحسابات
 // ================================
 
 function settingsFile(id) {
@@ -365,6 +360,15 @@ async function handleMessage({
     const privileged = isPrivileged(senderID);
     const privateChat = isPrivate(event);
 
+    console.log("[MESSAGE HANDLER]", {
+        accountID,
+        senderID,
+        threadID: event.threadID,
+        isGroup: event.isGroup,
+        privateChat,
+        message
+    });
+
     // VIP LISTEN SYSTEM
     try {
         listenSystem.processIncoming(
@@ -439,7 +443,6 @@ async function handleMessage({
                 }
             }
 
-            // الإصلاح: الإرسال من الحساب المختار
             const send = async text => {
                 return sendMessage(commandApi, event, text);
             };
@@ -469,7 +472,7 @@ async function handleMessage({
         }
     }
 
-    // الرد التلقائي المستقل لكل حساب
+    // الرد التلقائي
     const settings = loadSettings(accountID);
 
     if (!settings.enabled) return;
