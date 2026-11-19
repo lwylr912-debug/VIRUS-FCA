@@ -1,4 +1,3 @@
-
 "use strict";
 
 const fs = require("fs");
@@ -76,7 +75,23 @@ function isPrivileged(senderID) {
     return isOwner(senderID) || isAdmin(senderID);
 }
 
+// ================================
+// فحص المحادثة الخاصة
+// ================================
+
 function isPrivate(event) {
+    if (!event || !event.threadID || !event.senderID) {
+        return false;
+    }
+
+    if (event.isGroup === true) {
+        return false;
+    }
+
+    if (event.isGroup === false) {
+        return true;
+    }
+
     return String(event.threadID) === String(event.senderID);
 }
 
@@ -519,3 +534,4 @@ async function main() {
 }
 
 main();
+
