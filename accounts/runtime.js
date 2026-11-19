@@ -84,7 +84,6 @@ function startAccount(id, onEvent) {
                                 return;
                             }
 
-                            // عرض معلومات الرسالة في سطر واحد
                             console.log(
                                 "[MESSAGE DEBUG] " +
                                 JSON.stringify({
@@ -95,6 +94,17 @@ function startAccount(id, onEvent) {
                                     isGroup: event.isGroup,
                                     body: event.body
                                 })
+                            );
+
+                            // تشخيص مفاتيح الحدث ومحتواه الكامل
+                            console.log(
+                                "[EVENT KEYS] " +
+                                JSON.stringify(Object.keys(event))
+                            );
+
+                            console.log(
+                                "[EVENT DATA] " +
+                                JSON.stringify(event)
                             );
 
                             Promise.resolve()
