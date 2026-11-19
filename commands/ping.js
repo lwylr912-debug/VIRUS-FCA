@@ -1,15 +1,16 @@
+
 "use strict";
 
 module.exports = {
     name: "ping",
     description: "قياس سرعة استجابة البوت",
 
-    async run({ api, event }) {
+    async run({ send }) {
         const start = Date.now();
+        const responseTime = Date.now() - start;
 
-        api.sendMessage(
-            `🏓 PONG!\n⚡ سرعة الاستجابة: ${Date.now() - start} ms`,
-            event.threadID
+        return send(
+            `🏓 PONG!\n⚡ سرعة الاستجابة: ${responseTime} ms`
         );
     }
 };
