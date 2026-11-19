@@ -1,34 +1,60 @@
+
 "use strict";
+
+const fs = require("fs");
+const path = require("path");
 
 const { getApi } = require("./runtime");
 const { getSelectedAccount } = require("./selection");
 const { getStatus } = require("./status");
 
+const ADMINS_FILE = path.join(__dirname, "..", "admins.json");
+
+function isAdmin(userID) {
+    try {
+        if (!fs.existsSync(ADMINS_FILE)) return false;
+
+        const data = JSON.parse(
+            fs.readFileSync(ADMINS_FILE, "utf8")
+        );
+
+        if (!data || !Array.isArray(data.admins)) return false;
+
+        return data.admins.map(String).includes(String(userID));
+    } catch (error) {
+        console.error("Controller Admin Error:", error.message);
+        return false;
+    }
+}
+
 function getSelectedApi(userID, ownerID) {
-if (!ownerID || String(userID) !== String(ownerID)) {
-throw new Error("ليس لديك صلاحية التحكم بالحسابات.");
-}
+    const authorized =
+        String(userID) === String(ownerID) ||
+        isAdmin(userID);
 
-const accountID = getSelectedAccount(userID);
-const status = getStatus(accountID);
+    if (!ownerID || !authorized) {
+        throw new Error("ليس لديك صلاحية التحكم بالحسابات.");
+    }
 
-if (status.status !== "متصل") {
-    throw new Error(`الحساب ${accountID} غير متصل.`);
-}
+    const accountID = getSelectedAccount(userID);
+    const status = getStatus(accountID);
 
-const api = getApi(accountID);
+    if (status.status !== "متصل") {
+        throw new Error(`الحساب ${accountID} غير متصل.`);
+    }
 
-if (!api) {
-    throw new Error(`اتصال الحساب ${accountID} غير متاح.`);
-}
+    const api = getApi(accountID);
 
-return {
-    accountID,
-    api
-};
+    if (!api) {
+        throw new Error(`اتصال الحساب ${accountID} غير متاح.`);
+    }
 
+    return {
+        accountID,
+        api
+    };
 }
 
 module.exports = {
-getSelectedApi
+    getSelectedApi
 };
