@@ -71,18 +71,28 @@ function startAccount(id, onEvent) {
                                 return;
                             }
 
-                            if (!event || event.type !== "message") {
+                            if (!event) return;
+
+                            // تشخيص أنواع الأحداث
+                            if (event.type !== "message") {
+                                console.log("[OTHER EVENT]", {
+                                    accountID: id,
+                                    type: event.type
+                                });
                                 return;
                             }
 
-                            // MESSAGE DEBUG
+                            // تشخيص معلومات الرسالة
                             console.log("[MESSAGE DEBUG]", {
                                 accountID: id,
                                 type: event.type,
                                 threadID: event.threadID,
                                 senderID: event.senderID,
                                 isGroup: event.isGroup,
-                                body: event.body
+                                body: event.body,
+                                messageID: event.messageID,
+                                participantIDs: event.participantIDs,
+                                isGroupMessage: event.isGroupMessage
                             });
 
                             Promise.resolve()
