@@ -73,27 +73,29 @@ function startAccount(id, onEvent) {
 
                             if (!event) return;
 
-                            // تشخيص أنواع الأحداث
                             if (event.type !== "message") {
-                                console.log("[OTHER EVENT]", {
-                                    accountID: id,
-                                    type: event.type
-                                });
+                                console.log(
+                                    "[OTHER EVENT] " +
+                                    JSON.stringify({
+                                        accountID: id,
+                                        type: event.type
+                                    })
+                                );
                                 return;
                             }
 
-                            // تشخيص معلومات الرسالة
-                            console.log("[MESSAGE DEBUG]", {
-                                accountID: id,
-                                type: event.type,
-                                threadID: event.threadID,
-                                senderID: event.senderID,
-                                isGroup: event.isGroup,
-                                body: event.body,
-                                messageID: event.messageID,
-                                participantIDs: event.participantIDs,
-                                isGroupMessage: event.isGroupMessage
-                            });
+                            // عرض معلومات الرسالة في سطر واحد
+                            console.log(
+                                "[MESSAGE DEBUG] " +
+                                JSON.stringify({
+                                    accountID: id,
+                                    type: event.type,
+                                    threadID: event.threadID,
+                                    senderID: event.senderID,
+                                    isGroup: event.isGroup,
+                                    body: event.body
+                                })
+                            );
 
                             Promise.resolve()
                                 .then(() => onEvent(id, api, event))
