@@ -75,6 +75,16 @@ function startAccount(id, onEvent) {
                                 return;
                             }
 
+                            // MESSAGE DEBUG
+                            console.log("[MESSAGE DEBUG]", {
+                                accountID: id,
+                                type: event.type,
+                                threadID: event.threadID,
+                                senderID: event.senderID,
+                                isGroup: event.isGroup,
+                                body: event.body
+                            });
+
                             Promise.resolve()
                                 .then(() => onEvent(id, api, event))
                                 .catch((eventError) => {
