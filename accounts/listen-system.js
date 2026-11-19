@@ -1,3 +1,4 @@
+
 "use strict";
 
 const fs = require("fs");
@@ -28,11 +29,13 @@ function load(id) {
 
     try {
         if (!fs.existsSync(file)) {
-            save(id, DEFAULT);
+            save(id, { ...DEFAULT, users: [] });
             return { ...DEFAULT, users: [] };
         }
 
-        const data = JSON.parse(fs.readFileSync(file, "utf8"));
+        const data = JSON.parse(
+            fs.readFileSync(file, "utf8")
+        );
 
         return {
             ...DEFAULT,
@@ -41,6 +44,7 @@ function load(id) {
                 ? data.users.map(String)
                 : []
         };
+
     } catch (error) {
         console.error("VIP LISTEN:", error.message);
         return { ...DEFAULT, users: [] };
@@ -84,17 +88,29 @@ function removeUser(id, userID) {
 
 function setMessage(id, message) {
     const data = load(id);
-    data.message = message;
+    data.message = String(message);
     save(id, data);
 }
 
 function setDelay(id, seconds) {
+    seconds = Number(seconds);
+
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 3600) {
+        throw new Error("التأخير يجب أن يكون بين 0 و3600 ثانية.");
+    }
+
     const data = load(id);
     data.delay = seconds;
     save(id, data);
 }
 
 function setCooldown(id, seconds) {
+    seconds = Number(seconds);
+
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86400) {
+        throw new Error("وقت الانتظار يجب أن يكون بين 0 و86400 ثانية.");
+    }
+
     const data = load(id);
     data.cooldown = seconds;
     save(id, data);
@@ -102,26 +118,46 @@ function setCooldown(id, seconds) {
 
 function setEnabled(id, enabled) {
     const data = load(id);
-    data.enabled = enabled;
+    data.enabled = Boolean(enabled);
     save(id, data);
 }
 
 function processIncoming(id, api, event) {
-    if (!event || !event.senderID || !event.threadID) return;
+    if (!event || !event.senderID || !event.threadID) {
+        return;
+    }
 
-    // الخاص فقط
-    if (String(event.threadID) !== String(event.senderID)) return;
+    // تجاهل رسائل المجموعات إذا حددت المكتبة أنها مجموعة
+    if (event.isGroup === true) {
+        return;
+    }
+
+    // عند غياب معلومة نوع المحادثة نستخدم فحص المعرفات
+    if (
+        event.isGroup !== false &&
+        String(event.threadID) !== String(event.senderID)
+    ) {
+        return;
+    }
+
+    if (!api || typeof api.sendMessage !== "function") {
+        return;
+    }
 
     const data = load(id);
     const sender = String(event.senderID);
 
-    if (!data.enabled || !data.users.includes(sender)) return;
+    if (!data.enabled || !data.users.includes(sender)) {
+        return;
+    }
 
     const key = `${id}:${sender}`;
     const now = Date.now();
     const last = cooldowns.get(key) || 0;
 
-    if (now - last < data.cooldown * 1000) return;
+    if (now - last < data.cooldown * 1000) {
+        return;
+    }
 
     // منع تكرار الرد خلال فترة الانتظار
     cooldowns.set(key, now);
@@ -130,24 +166,18 @@ function processIncoming(id, api, event) {
         try {
             const updated = load(id);
 
-            if (!updated.enabled ||
-                !updated.users.includes(sender)) {
+            if (
+                !updated.enabled ||
+                !updated.users.includes(sender)
+            ) {
                 return;
             }
 
-            if (event.isE2EE &&
-                api.e2ee &&
-                typeof api.e2ee.sendMessage === "function") {
-                await api.e2ee.sendMessage(
-                    event.threadID,
-                    updated.message
-                );
-            } else {
-                await api.sendMessage(
-                    updated.message,
-                    event.threadID
-                );
-            }
+            await api.sendMessage(
+                String(updated.message),
+                String(event.threadID)
+            );
+
         } catch (error) {
             console.error(
                 `[VIP LISTEN ${id}] Send Error:`,
