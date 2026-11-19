@@ -1,8 +1,9 @@
+
 {
   "name": "virus-fca-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "VIRUS-FCA Messenger Bot with E2EE",
+  "description": "VIRUS-FCA Messenger Bot",
   "main": "index.js",
   "scripts": {
     "start": "node watchdog.js"
@@ -11,6 +12,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "fca-riyad": "37.2.7"
+    "@dongdev/fca-unofficial": "4.0.3"
   }
 }
