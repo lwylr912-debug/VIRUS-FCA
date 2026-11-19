@@ -1,3 +1,4 @@
+
 "use strict";
 
 const fs = require("fs");
@@ -438,8 +439,9 @@ async function handleMessage({
                 }
             }
 
+            // الإصلاح: الإرسال من الحساب المختار
             const send = async text => {
-                return sendMessage(api, event, text);
+                return sendMessage(commandApi, event, text);
             };
 
             try {
@@ -534,4 +536,3 @@ async function main() {
 }
 
 main();
-
