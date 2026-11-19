@@ -25,28 +25,32 @@ function getFile(id) {
 }
 
 function load(id) {
-    const file = getFile(id);
-
     try {
+        const file = getFile(id);
+
         if (!fs.existsSync(file)) {
-            save(id, { ...DEFAULT, users: [] });
-            return { ...DEFAULT, users: [] };
+            const data = { ...DEFAULT, users: [] };
+            save(id, data);
+            return data;
         }
 
-        const data = JSON.parse(
-            fs.readFileSync(file, "utf8")
-        );
+        const data = JSON.parse(fs.readFileSync(file, "utf8"));
+
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+            throw new Error("ملف الإعدادات غير صالح.");
+        }
 
         return {
             ...DEFAULT,
             ...data,
+            enabled: data.enabled === true,
             users: Array.isArray(data.users)
                 ? data.users.map(String)
                 : []
         };
 
     } catch (error) {
-        console.error("VIP LISTEN:", error.message);
+        console.error("VIP LISTEN LOAD:", error.message);
         return { ...DEFAULT, users: [] };
     }
 }
@@ -87,15 +91,21 @@ function removeUser(id, userID) {
 }
 
 function setMessage(id, message) {
+    message = String(message).trim();
+
+    if (!message) {
+        throw new Error("الرسالة لا يمكن أن تكون فارغة.");
+    }
+
     const data = load(id);
-    data.message = String(message);
+    data.message = message;
     save(id, data);
 }
 
 function setDelay(id, seconds) {
     seconds = Number(seconds);
 
-    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 3600) {
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 3600) {
         throw new Error("التأخير يجب أن يكون بين 0 و3600 ثانية.");
     }
 
@@ -107,8 +117,8 @@ function setDelay(id, seconds) {
 function setCooldown(id, seconds) {
     seconds = Number(seconds);
 
-    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 86400) {
-        throw new Error("وقت الانتظار يجب أن يكون بين 0 و86400 ثانية.");
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 86400) {
+        throw new Error("مدة الانتظار يجب أن تكون بين 0 و86400 ثانية.");
     }
 
     const data = load(id);
@@ -122,23 +132,24 @@ function setEnabled(id, enabled) {
     save(id, data);
 }
 
-function processIncoming(id, api, event) {
-    if (!event || !event.senderID || !event.threadID) {
-        return;
+function isPrivate(event) {
+    if (!event || !event.threadID || !event.senderID) {
+        return false;
     }
 
-    // تجاهل رسائل المجموعات إذا حددت المكتبة أنها مجموعة
     if (event.isGroup === true) {
-        return;
+        return false;
     }
 
-    // عند غياب معلومة نوع المحادثة نستخدم فحص المعرفات
-    if (
-        event.isGroup !== false &&
-        String(event.threadID) !== String(event.senderID)
-    ) {
-        return;
+    if (event.isGroup === false) {
+        return true;
     }
+
+    return String(event.threadID) === String(event.senderID);
+}
+
+function processIncoming(id, api, event) {
+    if (!isPrivate(event)) return;
 
     if (!api || typeof api.sendMessage !== "function") {
         return;
@@ -159,24 +170,31 @@ function processIncoming(id, api, event) {
         return;
     }
 
-    // منع تكرار الرد خلال فترة الانتظار
     cooldowns.set(key, now);
 
     setTimeout(async () => {
         try {
             const updated = load(id);
 
-            if (
-                !updated.enabled ||
-                !updated.users.includes(sender)
-            ) {
+            if (!updated.enabled || !updated.users.includes(sender)) {
                 return;
             }
 
-            await api.sendMessage(
-                String(updated.message),
-                String(event.threadID)
-            );
+            if (
+                event.isE2EE &&
+                api.e2ee &&
+                typeof api.e2ee.sendMessage === "function"
+            ) {
+                await api.e2ee.sendMessage(
+                    event.threadID,
+                    updated.message
+                );
+            } else {
+                await api.sendMessage(
+                    updated.message,
+                    event.threadID
+                );
+            }
 
         } catch (error) {
             console.error(
