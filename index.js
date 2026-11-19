@@ -161,17 +161,18 @@ function loadCommands() {
 // ================================
 
 async function sendMessage(api, event, text) {
-    const threadID = event.threadID;
-
-    if (
-        event.isE2EE &&
-        api.e2ee &&
-        typeof api.e2ee.sendMessage === "function"
-    ) {
-        return api.e2ee.sendMessage(threadID, text);
+    if (!api || typeof api.sendMessage !== "function") {
+        throw new Error("واجهة إرسال الرسائل غير متاحة.");
     }
 
-    return api.sendMessage(text, threadID);
+    if (!event || !event.threadID) {
+        throw new Error("معرّف المحادثة غير موجود.");
+    }
+
+    return api.sendMessage(
+        String(text),
+        String(event.threadID)
+    );
 }
 
 // ================================
@@ -349,7 +350,6 @@ async function handleMessage({
     const privateChat = isPrivate(event);
 
     // VIP LISTEN SYSTEM
-    // يستمع فقط للأشخاص الموجودين في القائمة
     try {
         listenSystem.processIncoming(
             accountID,
