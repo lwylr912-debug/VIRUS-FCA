@@ -1,4 +1,3 @@
-
 {
   "name": "virus-fca-bot",
   "version": "1.0.0",
@@ -13,5 +12,8 @@
   },
   "dependencies": {
     "@dongdev/fca-unofficial": "4.0.3"
+  },
+  "overrides": {
+    "gradient-string": "2.0.2"
   }
 }
